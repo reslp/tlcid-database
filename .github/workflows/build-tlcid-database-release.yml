@@ -1,0 +1,50 @@
+name: Build and release tlcid_database.db
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - data/chemical_data.csv
+      - data/lichen_substance_data.csv
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build database
+        run: |
+          python 05_build_tlcid_database.py \
+            --substances data/chemical_data.csv \
+            --lichen-links data/lichen_substance_data.csv \
+            --output tlcid_database.db
+
+      - name: Compute date tag
+        id: tag
+        run: echo "value=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update daily release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.value }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" tlcid_database.db --clobber
+          else
+            gh release create "$TAG" tlcid_database.db \
+              --title "$TAG" \
+              --notes "Automated database build for $TAG."
+          fi
