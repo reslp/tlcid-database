@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
@@ -53,6 +54,14 @@ CREATE TABLE Lichens (
     Lichen TEXT NOT NULL DEFAULT '',
     Substance TEXT NOT NULL DEFAULT '',
     Genus TEXT NOT NULL DEFAULT ''
+);
+"""
+
+METADATA_SCHEMA_SQL = """
+CREATE TABLE metadata (
+    table_name TEXT PRIMARY KEY,
+    row_count INTEGER NOT NULL,
+    created_at TEXT NOT NULL
 );
 """
 
@@ -173,6 +182,7 @@ def build_database(substances_csv: Path, lichens_csv: Path, out_db: Path) -> tup
         cur = con.cursor()
         cur.execute(SUBSTANCES_SCHEMA_SQL)
         cur.execute(LICHENS_SCHEMA_SQL)
+        cur.execute(METADATA_SCHEMA_SQL)
 
         cur.executemany(
             """
@@ -221,6 +231,17 @@ def build_database(substances_csv: Path, lichens_csv: Path, out_db: Path) -> tup
         substances_count = cur.fetchone()[0]
         cur.execute("SELECT COUNT(*) FROM Lichens")
         lichens_count = cur.fetchone()[0]
+
+        created_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        cur.executemany(
+            "INSERT INTO metadata (table_name, row_count, created_at) VALUES (?, ?, ?)",
+            [
+                ("Substances", substances_count, created_at),
+                ("Lichens", lichens_count, created_at),
+            ],
+        )
+
+        con.commit()
 
         return substances_count, lichens_count
     finally:
