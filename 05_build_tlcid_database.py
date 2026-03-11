@@ -39,6 +39,7 @@ CREATE TABLE Substances (
     Cortex TEXT(20),
     Medulla TEXT(20),
     Notes TEXT,
+    Reference TEXT,
     Related TEXT,
     Lichens TEXT,
     Synonyms TEXT,
@@ -80,6 +81,7 @@ TEXT_COLUMNS = [
     "Cortex",
     "Medulla",
     "Notes",
+    "Reference",
     "Related",
     "Lichens",
     "Synonyms",
@@ -161,6 +163,7 @@ def read_substances_rows(substances_csv: Path) -> list[tuple]:
                     text_values["Cortex"],
                     text_values["Medulla"],
                     text_values["Notes"],
+                    text_values["Reference"],
                     text_values["Related"],
                     text_values["Lichens"],
                     text_values["Synonyms"],
@@ -191,14 +194,14 @@ def build_database(substances_csv: Path, lichens_csv: Path, out_db: Path) -> tup
                 BefVis, BefUVS, BefUVL, Archers, AftVis, AftUV,
                 M, F1, F2, F3,
                 KResult, CResult, KCResult, PDResult,
-                Cortex, Medulla, Notes, Related, Lichens, Synonyms, Path,
+                Cortex, Medulla, Notes, Reference, Related, Lichens, Synonyms, Path,
                 GroupName, Class, GLossID
             ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?,
                 ?, ?, ?, ?, ?, ?,
                 ?, ?, ?, ?,
                 ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?,
                 ?, ?, ?
             )
             """,
