@@ -54,7 +54,10 @@ LICHENS_SCHEMA_SQL = """
 CREATE TABLE Lichens (
     Lichen TEXT NOT NULL DEFAULT '',
     Substance TEXT NOT NULL DEFAULT '',
-    Genus TEXT NOT NULL DEFAULT ''
+    Genus TEXT NOT NULL DEFAULT '',
+    SubstancesReference TEXT NOT NULL DEFAULT '',
+    Family TEXT NOT NULL DEFAULT '',
+    FamilyReference TEXT NOT NULL DEFAULT ''
 );
 """
 
@@ -105,6 +108,10 @@ def parse_int(value: str) -> int | None:
 def clean_text(value: str) -> str | None:
     text = (value or "").strip()
     return text or None
+
+
+def clean_text_nonnull(value: str) -> str:
+    return " ".join((value or "").strip().split())
 
 
 def normalize_substance_name(name: str) -> str:
@@ -215,18 +222,33 @@ def build_database(substances_csv: Path, lichens_csv: Path, out_db: Path) -> tup
                 species = " ".join((row.get("species", "") or "").strip().split())
                 if not species:
                     continue
+
                 genus = extract_genus(species)
+                substances_ref = clean_text_nonnull(
+                    row.get("substancess_reference", "")
+                    or row.get("substances_reference", "")
+                    or row.get("origin", "")
+                )
+                family = clean_text_nonnull(row.get("family", ""))
+                family_ref = clean_text_nonnull(row.get("family_reference", ""))
+
                 for substance in iter_split_substances(row.get("substances", "")):
-                    lichen_rows.add((species, substance, genus))
+                    lichen_rows.add((species, substance, genus, substances_ref, family, family_ref))
 
         cur.executemany(
-            "INSERT INTO Lichens (Lichen, Substance, Genus) VALUES (?, ?, ?)",
+            """
+            INSERT INTO Lichens (
+                Lichen, Substance, Genus,
+                SubstancesReference, Family, FamilyReference
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
             sorted(lichen_rows),
         )
 
         cur.execute('CREATE UNIQUE INDEX "Name" ON Substances(name)')
         cur.execute('CREATE INDEX "LichenIndex" ON Lichens(Lichen)')
         cur.execute('CREATE INDEX "Genus Index" ON Lichens(Genus)')
+        cur.execute('CREATE INDEX "Family Index" ON Lichens(Family)')
 
         con.commit()
 
